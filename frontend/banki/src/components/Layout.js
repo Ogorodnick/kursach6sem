@@ -16,20 +16,34 @@ const Layout = () => {
   return (
     <div className="layout">
       <header className="header">
-        <div className="container">
-          <Link to="/" className="logo">
-            🗂️ AnkiClone
-          </Link>
-          <nav className="nav">
+        <div className="header-container">
+          {/* Левая часть - навигация */}
+          <div className="header-left">
+            <Link to="/" className="nav-link">
+              🗂️ Мои колоды
+            </Link>
+          </div>
+
+          {/* Центральная часть - логотип/название */}
+          <div className="header-center">
+            <Link to="/" className="logo">
+              AnkiClone
+            </Link>
+          </div>
+
+          {/* Правая часть - пользователь и выход */}
+          <div className="header-right">
             {user && (
               <>
-                <Link to="/" className="nav-link">Мои колоды</Link>
+                <span className="user-email">
+                  {user.email || 'Пользователь'}
+                </span>
                 <button onClick={handleLogout} className="logout-btn">
                   Выйти
                 </button>
               </>
             )}
-          </nav>
+          </div>
         </div>
       </header>
       

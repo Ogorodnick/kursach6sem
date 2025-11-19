@@ -10,6 +10,7 @@ const Dashboard = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newDeck, setNewDeck] = useState({ title: '', description: '' });
   const [error, setError] = useState('');
+  const [deletingDeckId, setDeletingDeckId] = useState(null);
 
   useEffect(() => {
     fetchDecks();
@@ -20,34 +21,56 @@ const Dashboard = () => {
       console.log('Запрос колод пользователя...');
       const response = await axios.get('http://localhost:5000/api/decks/my');
       console.log('Полученные данные:', response.data);
-      console.log('Тип данных:', typeof response.data);
-      console.log('Является ли массивом?', Array.isArray(response.data));
       
-      // Обрабатываем разные форматы ответа
       let decksData = response.data;
       
-      // Если это объект с полем decks
       if (decksData && decksData.decks && Array.isArray(decksData.decks)) {
         decksData = decksData.decks;
       }
-      // Если это объект с полем data
-      else if (decksData && decksData.data && Array.isArray(decksData.data)) {
-        decksData = decksData.data;
+      else if (Array.isArray(decksData)) {
+        // Оставляем как есть
       }
-      // Если это не массив, создаем пустой массив
-      else if (!Array.isArray(decksData)) {
+      else {
         console.warn('Данные не являются массивом, преобразуем в массив');
         decksData = [];
       }
       
       console.log('Обработанные колоды:', decksData);
-      setDecks(decksData);
+      
+      // Для каждой колоды получаем количество карточек
+      const decksWithCardCount = await Promise.all(
+        decksData.map(async (deck) => {
+          try {
+            const cardsResponse = await axios.get(`http://localhost:5000/api/cards/deck/${deck.id}`);
+            const cardsData = cardsResponse.data;
+            let cardCount = 0;
+            
+            if (cardsData && cardsData.cards && Array.isArray(cardsData.cards)) {
+              cardCount = cardsData.cards.length;
+            } else if (Array.isArray(cardsData)) {
+              cardCount = cardsData.length;
+            }
+            
+            return {
+              ...deck,
+              cardCount
+            };
+          } catch (error) {
+            console.error(`Ошибка при загрузке карточек для колоды ${deck.id}:`, error);
+            return {
+              ...deck,
+              cardCount: 0
+            };
+          }
+        })
+      );
+      
+      setDecks(decksWithCardCount);
       setError('');
     } catch (error) {
       console.error('Ошибка при загрузке колод:', error);
-      console.error('Полный ответ ошибки:', error.response);
       setError('Ошибка при загрузке колод: ' + (error.response?.data?.message || error.message));
-      setDecks([]); // Устанавливаем пустой массив при ошибке
+      setDecks([]);
     } finally {
       setLoading(false);
     }
@@ -64,18 +87,45 @@ const Dashboard = () => {
         is_public: false
       });
       
-      // Добавляем новую колоду в начало списка
-      setDecks(prevDecks => {
-        const newDecks = Array.isArray(prevDecks) ? [...prevDecks] : [];
-        return [response.data, ...newDecks];
-      });
+      // Сразу добавляем новую колоду с временным cardCount
+      const newDeckWithCount = {
+        ...response.data,
+        cardCount: 0
+      };
       
+      setDecks(prevDecks => [newDeckWithCount, ...prevDecks]);
       setNewDeck({ title: '', description: '' });
       setShowCreateForm(false);
       setError('');
+      
+      // Обновляем список чтобы получить актуальные данные
+      setTimeout(() => {
+        fetchDecks();
+      }, 500);
     } catch (error) {
       console.error('Ошибка при создании колоды:', error);
       setError('Ошибка при создании колоды: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const deleteDeck = async (deckId, deckTitle) => {
+    if (!window.confirm(`Вы уверены, что хотите удалить колоду "${deckTitle}"? Все карточки в ней также будут удалены.`)) {
+      return;
+    }
+
+    setDeletingDeckId(deckId);
+    
+    try {
+      await axios.delete(`http://localhost:5000/api/decks/${deckId}`);
+      
+      // Сразу удаляем колоду из списка
+      setDecks(prevDecks => prevDecks.filter(deck => deck.id !== deckId));
+      setError('');
+    } catch (error) {
+      console.error('Ошибка при удалении колоды:', error);
+      setError('Ошибка при удалении колоды: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setDeletingDeckId(null);
     }
   };
 
@@ -100,18 +150,39 @@ const Dashboard = () => {
       );
     }
 
+    // В функции renderDecks в Dashboard.js обновим часть с рендерингом карточки:
     return decks.map(deck => (
       <div key={deck.id} className="deck-card">
-        <h3>{deck.title || 'Без названия'}</h3>
+        <div className="deck-header">
+          <h3>{deck.title || 'Без названия'}</h3>
+        </div>
+        
         {deck.description && <p className="deck-description">{deck.description}</p>}
-        <p className="cards-count">{deck.cardCount || 0} карточек</p>
+        
+        <div className="deck-stats">
+          <span className="cards-count">
+            📊 {deck.cardCount || 0} карточек
+          </span>
+          <span className="deck-date">
+            📅 {new Date(deck.created_at || deck.createdAt || Date.now()).toLocaleDateString('ru-RU')}
+          </span>
+        </div>
+        
         <div className="deck-actions">
           <Link to={`/deck/${deck.id}`} className="btn-secondary">
-            Открыть
+            📝 Открыть
           </Link>
           <Link to={`/study/${deck.id}`} className="btn-primary">
-            Учить
+            🎯 Учить
           </Link>
+          <button 
+            className="btn-delete"
+            onClick={() => deleteDeck(deck.id, deck.title)}
+            disabled={deletingDeckId === deck.id}
+            title="Удалить колоду"
+          >
+            {deletingDeckId === deck.id ? '⌛' : '🗑️ Удалить'}
+          </button>
         </div>
       </div>
     ));
@@ -145,12 +216,12 @@ const Dashboard = () => {
             <h3>Создать новую колоду</h3>
             <form onSubmit={createDeck}>
               <div className="form-group">
-                <label>Название колоды:</label>
+                <label>Название колоды:*</label>
                 <input
                   type="text"
                   value={newDeck.title}
                   onChange={(e) => setNewDeck({...newDeck, title: e.target.value})}
-                  placeholder="Название колоды"
+                  placeholder="Введите название колоды"
                   autoFocus
                   required
                 />
