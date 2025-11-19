@@ -1,0 +1,231 @@
+/* src/components/StudySession.css */
+.study-session {
+  max-width: 600px;
+  margin: 0 auto;
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.study-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.back-link {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.progress {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: #ecf0f1;
+  border-radius: 3px;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #3498db;
+  transition: width 0.3s ease;
+}
+
+.card-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+/* Обновим StudySession.css */
+.study-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  width: 100%;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.card-front, .card-back {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.card-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.question-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.question-section h2 {
+  color: #2c3e50;
+  margin: 0;
+  line-height: 1.6;
+  font-size: 1.5rem;
+  font-weight: 500;
+  word-wrap: break-word;
+  width: 100%;
+}
+
+.answer-section {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #3498db;
+}
+
+.answer-section h3 {
+  color: #7f8c8d;
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.answer-text {
+  color: #2c3e50;
+  font-size: 1.3rem;
+  line-height: 1.6;
+  margin: 0;
+  font-weight: 500;
+}
+
+.button-section {
+  margin-top: auto;
+}
+
+.show-answer-btn {
+  width: 100%;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  margin-top: 2rem;
+}
+
+.difficulty-buttons {
+  width: 100%;
+}
+
+.difficulty-buttons p {
+  margin-bottom: 1.5rem;
+  color: #7f8c8d;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.btn-difficulty {
+  padding: 1rem 0.5rem;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-difficulty:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.btn-difficulty.again {
+  background-color: #e74c3c;
+}
+
+.btn-difficulty.hard {
+  background-color: #e67e22;
+}
+
+.btn-difficulty.good {
+  background-color: #3498db;
+}
+
+.btn-difficulty.easy {
+  background-color: #2ecc71;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .study-card {
+    min-height: 450px;
+  }
+  
+  .card-front, .card-back {
+    padding: 1.5rem;
+  }
+  
+  .question-section h2 {
+    font-size: 1.25rem;
+  }
+  
+  .answer-text {
+    font-size: 1.1rem;
+  }
+  
+  .buttons-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  
+  .btn-difficulty {
+    min-height: 50px;
+    font-size: 0.85rem;
+  }
+  
+  .answer-section {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+}

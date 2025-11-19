@@ -79,24 +79,4 @@ router.get('/error-handling-test', asyncHandler(async (req, res) => {
   res.json({ message: 'Use ?test=sync|async|validation to test error handling' });
 }));
 
-const testLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 минута для тестов
-  max: 3, // максимум 3 запроса в минуту
-  message: { 
-    error: 'Too many test requests, please try again in a minute',
-    code: 'RATE_LIMIT_EXCEEDED'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-router.get('/rate-limit-test', testLimiter, (req, res) => {
-  res.json({ 
-    message: 'Rate limit test successful',
-    requestsRemaining: req.rateLimit.remaining,
-    limitReset: new Date(req.rateLimit.resetTime).toISOString(),
-    timestamp: new Date().toISOString()
-  });
-});
-
 module.exports = router;

@@ -1,53 +1,58 @@
 // src/App.js
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import PrivateRoute from './components/common/PrivateRoute';
-import Navbar from './components/common/Navbar';
-
-// Страницы
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Decks from './pages/Decks';
-import Review from './pages/Review';
-import PublicDecks from './pages/PublicDecks';
-import Dashboard from './pages/Dashboard';
-
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Login from './components/Login';
+import Register from './components/Register';
+import Dashboard from './components/Dashboard';
+import DeckDetail from './components/DeckDetail';
+import StudySession from './components/StudySession';
+import Layout from './components/Layout';
 import './App.css';
+
+// Компонент для защиты маршрутов
+const ProtectedRoute = ({ children }) => {
+  const { user } = useAuth();
+  return user ? children : <Navigate to="/login" replace />;
+};
+
+// Компонент для публичных маршрутов (только для неавторизованных)
+const PublicRoute = ({ children }) => {
+  const { user } = useAuth();
+  return !user ? children : <Navigate to="/" replace />;
+};
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="App">
-          <Navbar />
-          <main className="main-content">
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/" element={
-                <PrivateRoute>
-                  <Dashboard />
-                </PrivateRoute>
-              } />
-              <Route path="/decks" element={
-                <PrivateRoute>
-                  <Decks />
-                </PrivateRoute>
-              } />
-              <Route path="/review" element={
-                <PrivateRoute>
-                  <Review />
-                </PrivateRoute>
-              } />
-              <Route path="/public" element={
-                <PrivateRoute>
-                  <PublicDecks />
-                </PrivateRoute>
-              } />
-            </Routes>
-          </main>
-        </div>
+        <Routes>
+          {/* Публичные маршруты - доступны только неавторизованным */}
+          <Route path="/login" element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          } />
+          <Route path="/register" element={
+            <PublicRoute>
+              <Register />
+            </PublicRoute>
+          } />
+          
+          {/* Защищенные маршруты - доступны только авторизованным */}
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<Dashboard />} />
+            <Route path="deck/:deckId" element={<DeckDetail />} />
+            <Route path="study/:deckId" element={<StudySession />} />
+          </Route>
+          
+          {/* Резервный маршрут */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </Router>
     </AuthProvider>
   );
