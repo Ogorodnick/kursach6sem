@@ -29,9 +29,15 @@ const DiscoverDecks = () => {
       
       const params = {
         page,
-        limit: 20,
-        ...(search && { q: search })
+        limit: 20
       };
+
+      // Добавляем параметр поиска только если он не пустой
+      if (search.trim()) {
+        params.search = search.trim();
+      }
+
+      console.log('Запрос публичных колод с параметрами:', params);
 
       const response = await axios.get('http://localhost:5000/api/decks/public', { params });
       
@@ -41,8 +47,10 @@ const DiscoverDecks = () => {
         decksData = [];
       }
 
-      // Если это первая страница, заменяем данные, иначе добавляем
-      if (page === 1) {
+      console.log('Получены колоды:', decksData.length, 'поиск:', search);
+
+      // Если это первая страница или изменился поисковый запрос, заменяем данные
+      if (page === 1 || search !== searchTerm) {
         setDecks(decksData);
       } else {
         setDecks(prev => [...prev, ...decksData]);
@@ -58,16 +66,26 @@ const DiscoverDecks = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [searchTerm]);
 
+  // Используем debounce для поиска чтобы избежать множественных запросов
   useEffect(() => {
-    fetchPublicDecks(1, searchTerm);
-  }, [fetchPublicDecks, searchTerm]);
+    const timeoutId = setTimeout(() => {
+      setCurrentPage(1);
+      setDecks([]);
+      fetchPublicDecks(1, searchTerm);
+    }, 500); // Задержка 500ms
 
-  const handleSearch = (term) => {
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, fetchPublicDecks]);
+
+  const handleSearchChange = (term) => {
     setSearchTerm(term);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
     setCurrentPage(1);
-    setDecks([]);
   };
 
   const loadMore = () => {
@@ -121,7 +139,7 @@ const DiscoverDecks = () => {
           {searchTerm && (
             <button 
               className="btn-secondary"
-              onClick={() => handleSearch('')}
+              onClick={clearSearch}
               style={{ marginTop: '1rem' }}
             >
               Показать все колоды
@@ -202,13 +220,13 @@ const DiscoverDecks = () => {
               type="text"
               placeholder="Поиск колод по названию или описанию..."
               value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="search-input"
             />
             {searchTerm && (
               <button 
                 className="search-clear-btn"
-                onClick={() => handleSearch('')}
+                onClick={clearSearch}
                 title="Очистить поиск"
               >
                 ✕

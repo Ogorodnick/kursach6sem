@@ -19,22 +19,25 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      // Попробуем получить данные пользователя для проверки токена
-      verifyToken(token);
+      // Получаем полные данные пользователя при перезагрузке
+      fetchUserData();
     } else {
       setLoading(false);
     }
   }, []);
 
-  const verifyToken = async (token) => {
+  const fetchUserData = async () => {
     try {
-      // Можно добавить endpoint для проверки токена, например /api/auth/me
-      // Или просто установить пользователя с токеном
-      setUser({ token });
+      const response = await axios.get('/api/auth/me');
+      console.log('Данные пользователя:', response.data);
+      setUser({
+        token: localStorage.getItem('token'),
+        ...response.data.user
+      });
     } catch (error) {
-      console.error('Токен невалиден:', error);
-      localStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
+      console.error('Ошибка получения данных пользователя:', error);
+      // Если не удалось получить данные, делаем логаут
+      logout();
     } finally {
       setLoading(false);
     }
@@ -51,7 +54,7 @@ export const AuthProvider = ({ children }) => {
       
       console.log('Ответ от сервера:', response.data);
       
-      const { token } = response.data;
+      const { token, user: userData } = response.data;
       
       if (!token) {
         throw new Error('Токен не получен от сервера');
@@ -59,7 +62,12 @@ export const AuthProvider = ({ children }) => {
       
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser({ token, email });
+      
+      // Сохраняем все данные пользователя, включая username
+      setUser({
+        token,
+        ...userData
+      });
       
       return { success: true };
     } catch (error) {
@@ -67,15 +75,12 @@ export const AuthProvider = ({ children }) => {
       let errorMessage = 'Ошибка входа';
       
       if (error.response) {
-        // Сервер ответил с ошибкой
         errorMessage = error.response.data?.message || 
                       error.response.data?.error || 
                       `Ошибка ${error.response.status}`;
       } else if (error.request) {
-        // Запрос был сделан, но ответ не получен
         errorMessage = 'Сервер не отвечает. Проверьте подключение.';
       } else {
-        // Что-то пошло не так при настройке запроса
         errorMessage = error.message;
       }
       
@@ -92,6 +97,17 @@ export const AuthProvider = ({ children }) => {
       
       const response = await axios.post('/api/auth/register', userData);
       console.log('Ответ от сервера при регистрации:', response.data);
+      
+      // После успешной регистрации автоматически логиним пользователя
+      if (response.data.token) {
+        const { token, user: newUserData } = response.data;
+        localStorage.setItem('token', token);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setUser({
+          token,
+          ...newUserData
+        });
+      }
       
       return { success: true, data: response.data };
     } catch (error) {

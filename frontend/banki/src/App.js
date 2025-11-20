@@ -40,6 +40,7 @@ function App() {
               <Register />
             </PublicRoute>
           } />
+          <Route path="shared/:deckId" element={<SharedDeckView />} />
           
           {/* Защищенные маршруты - доступны только авторизованным */}
           <Route path="/" element={
@@ -51,7 +52,7 @@ function App() {
             <Route path="deck/:deckId" element={<DeckDetail />} />
             <Route path="study/:deckId" element={<StudySession />} />
             <Route path="/discover" element={<DiscoverDecks />} />
-            <Route path="shared/:deckId" element={<SharedDeckView />} />
+            
           </Route>
           
           {/* Резервный маршрут */}

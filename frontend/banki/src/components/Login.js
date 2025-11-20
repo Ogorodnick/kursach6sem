@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 import './Auth.css';
 
 const Login = () => {
@@ -10,16 +11,45 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [copyingDeck, setCopyingDeck] = useState(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Получаем ID колоды для копирования из location.state
+  const copyDeckId = location.state?.copyDeckId;
+  const from = location.state?.from || '/';
 
   useEffect(() => {
     if (location.state?.message) {
       setSuccessMessage(location.state.message);
     }
   }, [location]);
+
+  const copyDeckAfterLogin = async (deckId) => {
+    try {
+      setCopyingDeck(true);
+      const response = await axios.post(`http://localhost:5000/api/decks/${deckId}/copy`);
+      
+      // Показываем сообщение об успешном копировании
+      setSuccessMessage(prev => 
+        prev ? `${prev} Колода успешно скопирована в вашу коллекцию!` 
+             : 'Колода успешно скопирована в вашу коллекцию!'
+      );
+      
+      return true;
+    } catch (error) {
+      console.error('Ошибка при копировании колоды:', error);
+      setError(prev => 
+        prev ? `${prev} Ошибка при копировании колоды.` 
+             : 'Ошибка при копировании колоды.'
+      );
+      return false;
+    } finally {
+      setCopyingDeck(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,8 +64,28 @@ const Login = () => {
     console.log('Результат входа:', result);
     
     if (result.success) {
-      console.log('Вход успешен, перенаправление на главную');
-      navigate('/');
+      console.log('Вход успешен');
+      
+      // Если есть колода для копирования, копируем ее
+      if (copyDeckId) {
+        console.log('Копирование колоды после входа:', copyDeckId);
+        const copySuccess = await copyDeckAfterLogin(copyDeckId);
+        
+        if (copySuccess) {
+          // После успешного копирования перенаправляем на главную
+          setTimeout(() => {
+            navigate('/');
+          }, 2000);
+        } else {
+          // Если копирование не удалось, все равно перенаправляем
+          setTimeout(() => {
+            navigate(from);
+          }, 2000);
+        }
+      } else {
+        // Обычное перенаправление после входа
+        navigate(from);
+      }
     } else {
       setError(result.message);
       console.log('Ошибка входа:', result.message);
@@ -55,23 +105,20 @@ const Login = () => {
       <div className="auth-card">
         <h2>Вход в систему</h2>
         
-        {/* Кнопка для тестирования - можно удалить позже */}
-        <button 
-          onClick={fillTestData}
-          className="btn-test"
-          style={{
-            background: '#f39c12',
-            color: 'white',
-            border: 'none',
-            padding: '0.5rem 1rem',
-            borderRadius: '4px',
+        {/* Показываем информацию о копировании колоды */}
+        {copyDeckId && (
+          <div className="info-message" style={{
+            background: '#e3f2fd',
+            border: '1px solid #2196f3',
+            borderRadius: '6px',
+            padding: '1rem',
             marginBottom: '1rem',
-            cursor: 'pointer',
-            fontSize: '0.8rem'
-          }}
-        >
-          Заполнить тестовые данные
-        </button>
+            textAlign: 'center'
+          }}>
+            <strong>После входа колода будет автоматически добавлена в вашу коллекцию</strong>
+          </div>
+        )}
+      
         
         {successMessage && (
           <div className="success-message">
@@ -95,7 +142,7 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
               required
-              disabled={loading}
+              disabled={loading || copyingDeck}
             />
           </div>
 
@@ -108,16 +155,16 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Введите пароль"
               required
-              disabled={loading}
+              disabled={loading || copyingDeck}
             />
           </div>
 
           <button 
             type="submit" 
             className="auth-button"
-            disabled={loading}
+            disabled={loading || copyingDeck}
           >
-            {loading ? 'Вход...' : 'Войти'}
+            {loading ? 'Вход...' : copyingDeck ? 'Копирование колоды...' : 'Войти'}
           </button>
         </form>
 

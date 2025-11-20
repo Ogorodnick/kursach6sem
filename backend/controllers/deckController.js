@@ -37,10 +37,12 @@ const deckController = {
   // Получение публичных колод
   async getPublicDecks(req, res) {
     try {
-      const { page = 1, limit = 20 } = req.query;
+      const { page = 1, limit = 20, search = '' } = req.query;
       const offset = (page - 1) * limit;
       
-      const decks = await Deck.findPublicDecks(parseInt(limit), offset);
+      console.log('Поиск публичных колод с параметрами:', { page, limit, search, offset });
+      
+      const decks = await Deck.findPublicDecks(parseInt(limit), offset, search);
       res.json({ decks });
     } catch (error) {
       console.error('Get public decks error:', error);

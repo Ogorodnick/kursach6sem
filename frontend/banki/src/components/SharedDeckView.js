@@ -3,11 +3,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Notification from './Notification';
+import { useAuth } from '../context/AuthContext';
 import './SharedDeckView.css';
 
 const SharedDeckView = () => {
   const { deckId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [deck, setDeck] = useState(null);
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,21 @@ const SharedDeckView = () => {
     fetchDeck();
   }, [fetchDeck]);
 
-  const copyDeck = async () => {
+  const handleCopyDeck = async () => {
+    // Если пользователь не авторизован, перенаправляем на логин с сохранением ID колоды
+    if (!user) {
+      showNotification('Для копирования колоды необходимо войти в систему', 'warning');
+      setTimeout(() => {
+        navigate('/login', { 
+          state: { 
+            from: `/shared/${deckId}`,
+            copyDeckId: deckId // Сохраняем ID колоды для копирования
+          } 
+        });
+      }, 1500);
+      return;
+    }
+
     setCopyingDeck(true);
     
     try {
@@ -84,6 +100,24 @@ const SharedDeckView = () => {
     }
   };
 
+  const handleDiscoverClick = () => {
+    // Если пользователь не авторизован, перенаправляем на логин с возвратом к поиску
+    if (!user) {
+      showNotification('Для просмотра всех колод необходимо войти в систему', 'info');
+      setTimeout(() => {
+        navigate('/login', { 
+          state: { 
+            from: '/discover' // После входа перенаправит на страницу поиска
+          } 
+        });
+      }, 1500);
+      return;
+    }
+    
+    // Если авторизован - сразу на страницу поиска
+    navigate('/discover');
+  };
+
   const nextCard = () => {
     setShowAnswer(false);
     setCurrentCardIndex((prev) => (prev + 1) % cards.length);
@@ -96,6 +130,52 @@ const SharedDeckView = () => {
 
   const toggleAnswer = () => {
     setShowAnswer(!showAnswer);
+  };
+
+  // Функция для отображения кнопки копирования с учетом авторизации
+  const renderCopyButton = (className = 'btn-copy') => {
+    if (!user) {
+      return (
+        <button 
+          className={className}
+          onClick={handleCopyDeck}
+          title="Войдите в систему чтобы скопировать колоду"
+        >
+          🔐 Войти и скопировать
+        </button>
+      );
+    }
+
+    return (
+      <button 
+        className={className}
+        onClick={handleCopyDeck}
+        disabled={copyingDeck}
+      >
+        {copyingDeck ? '📥 Копирование...' : '📥 Копировать в мои колоды'}
+      </button>
+    );
+  };
+
+  // Функция для отображения кнопки "Другие колоды"
+  const renderDiscoverButton = () => {
+    if (!user) {
+      return (
+        <button 
+          className="btn-secondary"
+          onClick={handleDiscoverClick}
+          title="Войдите в систему чтобы найти другие колоды"
+        >
+          🔐 Войти и найти колоды
+        </button>
+      );
+    }
+
+    return (
+      <Link to="/discover" className="btn-secondary">
+        🔍 Другие колоды
+      </Link>
+    );
   };
 
   if (loading) {
@@ -113,12 +193,14 @@ const SharedDeckView = () => {
           <h2>Ошибка</h2>
           <p>{error}</p>
           <div className="error-actions">
-            <Link to="/discover" className="btn-primary">
+            <button className="btn-primary" onClick={handleDiscoverClick}>
               🔍 Найти другие колоды
-            </Link>
-            <Link to="/" className="btn-secondary">
-              🗂️ К моим колодам
-            </Link>
+            </button>
+            {user && (
+              <Link to="/" className="btn-secondary">
+                🗂️ К моим колодам
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -131,9 +213,9 @@ const SharedDeckView = () => {
         <div className="error-state">
           <h2>Колода не найдена</h2>
           <p>Возможно, ссылка устарела или колода была удалена</p>
-          <Link to="/discover" className="btn-primary">
+          <button className="btn-primary" onClick={handleDiscoverClick}>
             🔍 Найти другие колоды
-          </Link>
+          </button>
         </div>
       </div>
     );
@@ -145,20 +227,16 @@ const SharedDeckView = () => {
     <div className="shared-deck-view">
       <div className="shared-deck-header">
         <div className="breadcrumb">
-          <Link to="/discover">🔍 Найти колоду</Link> / <span>{deck.title}</span>
+          {user ? (
+            <Link to="/discover">🔍 Найти колоду</Link>
+          ) : (
+            <span>🔍 Публичная колода</span>
+          )} / <span>{deck.title}</span>
         </div>
         
         <div className="deck-actions">
-          <button 
-            className="btn-copy"
-            onClick={copyDeck}
-            disabled={copyingDeck}
-          >
-            {copyingDeck ? '📥 Копирование...' : '📥 Копировать в мои колоды'}
-          </button>
-          <Link to="/discover" className="btn-secondary">
-            🔍 Другие колоды
-          </Link>
+          {renderCopyButton()}
+          {renderDiscoverButton()}
         </div>
       </div>
 
@@ -234,13 +312,7 @@ const SharedDeckView = () => {
           </div>
 
           <div className="preview-actions">
-            <button 
-              className="btn-copy-large"
-              onClick={copyDeck}
-              disabled={copyingDeck}
-            >
-              {copyingDeck ? '📥 Копирование...' : '📥 Скопировать всю колоду'}
-            </button>
+            {renderCopyButton('btn-copy-large')}
           </div>
         </div>
       ) : (

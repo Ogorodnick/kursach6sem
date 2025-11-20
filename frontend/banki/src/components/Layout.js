@@ -39,7 +39,7 @@ const Layout = () => {
             {user && (
               <>
                 <span className="user-email">
-                  {user.email || 'Пользователь'}
+                  {user.username || user.email || 'Пользователь'}
                 </span>
                 <button onClick={handleLogout} className="logout-btn">
                   🚪 Выйти

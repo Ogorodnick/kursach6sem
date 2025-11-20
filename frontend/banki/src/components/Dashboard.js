@@ -378,7 +378,6 @@ const Dashboard = () => {
                     checked={newDeck.is_public}
                     onChange={(e) => setNewDeck({...newDeck, is_public: e.target.checked})}
                   />
-                  <span className="toggle-slider"></span>
                   <span className="toggle-label">
                     {newDeck.is_public ? '🌐 Публичная колода' : '🔒 Приватная колода'}
                   </span>

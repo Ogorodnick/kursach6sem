@@ -40,8 +40,8 @@ class Deck {
   }
 
   // Получение публичных колод
-  static async findPublicDecks(limit = 50, offset = 0) {
-    const query = `
+  static async findPublicDecks(limit = 50, offset = 0, search = '') {
+    let query = `
       SELECT d.*, u.username as author_username,
              COUNT(DISTINCT c.id) as card_count,
              COUNT(DISTINCT ud.user_id) as user_count
@@ -50,12 +50,26 @@ class Deck {
       LEFT JOIN cards c ON d.id = c.deck_id
       LEFT JOIN user_decks ud ON d.id = ud.deck_id
       WHERE d.is_public = true
+    `;
+    
+    const values = [limit, offset];
+    
+    // Добавляем условие поиска если передан search
+    if (search && search.trim()) {
+      query += ` AND (d.title ILIKE $3 OR d.description ILIKE $3)`;
+      values.push(`%${search.trim()}%`);
+    }
+    
+    query += `
       GROUP BY d.id, u.username
       ORDER BY user_count DESC, d.created_at DESC
       LIMIT $1 OFFSET $2
     `;
     
-    const { rows } = await pool.query(query, [limit, offset]);
+    console.log('SQL запрос поиска колод:', query);
+    console.log('Параметры:', values);
+    
+    const { rows } = await pool.query(query, values);
     return rows;
   }
 
@@ -76,7 +90,6 @@ class Deck {
   }
 
   // Обновление колоды
-// models/Deck.js - упрощенная версия
   static async update(id, updateData) {
     const { title, description, is_public } = updateData;
     

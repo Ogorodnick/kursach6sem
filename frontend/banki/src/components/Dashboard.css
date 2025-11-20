@@ -370,7 +370,16 @@
   font-weight: 500;
   color: #2c3e50;
   margin-bottom: 0.5rem;
-  padding: 0.5rem 0;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s;
+}
+
+.privacy-toggle:hover {
+  border-color: #3498db;
+  background: #f1f8ff;
 }
 
 .privacy-toggle input {
@@ -379,37 +388,40 @@
 
 .toggle-slider {
   position: relative;
-  width: 50px;
-  height: 24px;
-  background-color: #bdc3c7;
-  border-radius: 24px;
-  margin-right: 0.75rem;
+  width: 60px;
+  height: 30px;
+  background-color: #95a5a6; /* Серый для приватного */
+  border-radius: 30px;
+  margin-right: 1rem;
   transition: all 0.3s;
+  border: 2px solid #7f8c8d;
 }
 
 .toggle-slider:before {
   content: "";
   position: absolute;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background-color: white;
   top: 2px;
   left: 2px;
   transition: all 0.3s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .privacy-toggle input:checked + .toggle-slider {
-  background-color: #27ae60;
+  background-color: #27ae60; /* Зеленый для публичного */
+  border-color: #219653;
 }
 
 .privacy-toggle input:checked + .toggle-slider:before {
-  transform: translateX(26px);
+  transform: translateX(30px);
 }
 
 .toggle-label {
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .privacy-help {
@@ -417,14 +429,7 @@
   color: #7f8c8d;
   margin: 0.25rem 0 0 0;
   line-height: 1.4;
-  padding-left: 3.25rem;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  margin-top: 2rem;
+  padding-left: 4.5rem;
 }
 
 /* Адаптивность */
