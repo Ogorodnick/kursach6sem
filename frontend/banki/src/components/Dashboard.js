@@ -10,7 +10,11 @@ const Dashboard = () => {
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newDeck, setNewDeck] = useState({ title: '', description: '' });
+  const [newDeck, setNewDeck] = useState({ 
+    title: '', 
+    description: '',
+    is_public: false 
+  });
   const [error, setError] = useState('');
   const [deletingDeckId, setDeletingDeckId] = useState(null);
   
@@ -118,7 +122,7 @@ const Dashboard = () => {
       const response = await axios.post('http://localhost:5000/api/decks', {
         title: newDeck.title,
         description: newDeck.description,
-        is_public: false
+        is_public: newDeck.is_public
       });
       
       // Сразу добавляем новую колоду с временным cardCount
@@ -128,12 +132,13 @@ const Dashboard = () => {
       };
       
       setDecks(prevDecks => [newDeckWithCount, ...prevDecks]);
-      setNewDeck({ title: '', description: '' });
+      setNewDeck({ title: '', description: '', is_public: false });
       setShowCreateForm(false);
       setError('');
       
       // Показываем уведомление об успешном создании
-      showNotification('Колода успешно создана!', 'success');
+      const statusText = newDeck.is_public ? 'публичная' : 'приватная';
+      showNotification(`Колода успешно создана (${statusText})!`, 'success');
       
       // Обновляем список чтобы получить актуальные данные
       setTimeout(() => {
@@ -178,6 +183,32 @@ const Dashboard = () => {
     openConfirmModal(deckId, deckTitle);
   };
 
+  const toggleDeckVisibility = async (deckId, currentStatus, deckTitle) => {
+    try {
+      const newStatus = !currentStatus;
+      await axios.patch(`http://localhost:5000/api/decks/${deckId}`, {
+        is_public: newStatus
+      });
+      
+      // Обновляем статус колоды в состоянии
+      setDecks(prevDecks => 
+        prevDecks.map(deck => 
+          deck.id === deckId 
+            ? { ...deck, is_public: newStatus }
+            : deck
+        )
+      );
+      
+      const statusText = newStatus ? 'публичной' : 'приватной';
+      showNotification(`Колода "${deckTitle}" теперь ${statusText}`, 'success');
+      
+    } catch (error) {
+      console.error('Ошибка при изменении видимости колоды:', error);
+      const errorMessage = 'Ошибка при изменении видимости колоды: ' + (error.response?.data?.message || error.message);
+      showNotification(errorMessage, 'error');
+    }
+  };
+
   // Безопасный рендеринг колод
   const renderDecks = () => {
     if (!Array.isArray(decks)) {
@@ -203,6 +234,11 @@ const Dashboard = () => {
       <div key={deck.id} className="deck-card">
         <div className="deck-header">
           <h3>{deck.title || 'Без названия'}</h3>
+          <div className="deck-visibility">
+            <span className={`visibility-badge ${deck.is_public ? 'public' : 'private'}`}>
+              {deck.is_public ? '🌐 Публичная' : '🔒 Приватная'}
+            </span>
+          </div>
         </div>
         
         {deck.description && <p className="deck-description">{deck.description}</p>}
@@ -224,12 +260,32 @@ const Dashboard = () => {
             🎯 Учить
           </Link>
           <button 
+            className={`btn-toggle ${deck.is_public ? 'btn-public' : 'btn-private'}`}
+            onClick={() => toggleDeckVisibility(deck.id, deck.is_public, deck.title)}
+            title={deck.is_public ? 'Сделать приватной' : 'Сделать публичной'}
+          >
+            {deck.is_public ? '🔒' : '🌐'}
+          </button>
+          {deck.is_public && (
+            <button 
+              className="btn-share"
+              onClick={() => {
+                const shareUrl = `${window.location.origin}/shared/${deck.id}`;
+                navigator.clipboard.writeText(shareUrl);
+                showNotification('Ссылка на колоду скопирована в буфер обмена!', 'success');
+              }}
+              title="Скопировать ссылку для общего доступа"
+            >
+              🔗
+            </button>
+          )}
+          <button 
             className="btn-delete"
             onClick={() => deleteDeck(deck.id, deck.title)}
             disabled={deletingDeckId === deck.id}
             title="Удалить колоду"
           >
-            {deletingDeckId === deck.id ? '⌛' : '🗑️ Удалить'}
+            {deletingDeckId === deck.id ? '⌛' : '🗑️'}
           </button>
         </div>
       </div>
@@ -300,6 +356,25 @@ const Dashboard = () => {
                   placeholder="Описание колоды"
                   rows="3"
                 />
+              </div>
+              <div className="form-group">
+                <label className="privacy-toggle">
+                  <input
+                    type="checkbox"
+                    checked={newDeck.is_public}
+                    onChange={(e) => setNewDeck({...newDeck, is_public: e.target.checked})}
+                  />
+                  <span className="toggle-slider"></span>
+                  <span className="toggle-label">
+                    {newDeck.is_public ? '🌐 Публичная колода' : '🔒 Приватная колода'}
+                  </span>
+                </label>
+                <p className="privacy-help">
+                  {newDeck.is_public 
+                    ? 'Публичные колоды видны другим пользователям и могут быть использованы для обучения'
+                    : 'Приватные колоды видны только вам'
+                  }
+                </p>
               </div>
               <div className="modal-actions">
                 <button type="submit" className="btn-primary">

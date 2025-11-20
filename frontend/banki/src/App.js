@@ -8,6 +8,8 @@ import Dashboard from './components/Dashboard';
 import DeckDetail from './components/DeckDetail';
 import StudySession from './components/StudySession';
 import Layout from './components/Layout';
+import DiscoverDecks from './components/DiscoverDecks';
+import SharedDeckView from './components/SharedDeckView';
 import './App.css';
 
 // Компонент для защиты маршрутов
@@ -48,6 +50,8 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="deck/:deckId" element={<DeckDetail />} />
             <Route path="study/:deckId" element={<StudySession />} />
+            <Route path="/discover" element={<DiscoverDecks />} />
+            <Route path="shared/:deckId" element={<SharedDeckView />} />
           </Route>
           
           {/* Резервный маршрут */}
