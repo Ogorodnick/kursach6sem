@@ -1,0 +1,116 @@
+/* src/components/ConfirmModal.css */
+.confirm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.confirm-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  animation: modalAppear 0.2s ease-out;
+}
+
+.confirm-modal-header {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.confirm-modal-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.4rem;
+}
+
+.confirm-modal-body {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.confirm-modal-body p {
+  margin: 0;
+  color: #7f8c8d;
+  line-height: 1.5;
+  font-size: 1rem;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.btn-confirm-delete {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  min-width: 120px;
+}
+
+.btn-confirm-delete:hover {
+  background-color: #c0392b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+.btn-cancel {
+  background-color: #95a5a6;
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  min-width: 120px;
+}
+
+.btn-cancel:hover {
+  background-color: #7f8c8d;
+  transform: translateY(-1px);
+}
+
+@keyframes modalAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .confirm-modal {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+  
+  .confirm-modal-actions {
+    flex-direction: column;
+  }
+  
+  .btn-confirm-delete,
+  .btn-cancel {
+    min-width: auto;
+  }
+}

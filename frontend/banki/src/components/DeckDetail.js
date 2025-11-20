@@ -2,12 +2,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
+import ConfirmModal from './ConfirmModal';
+import Notification from './Notification';
 import './DeckDetail.css';
 
 const DeckDetail = () => {
   const { deckId } = useParams();
   const [deck, setDeck] = useState(null);
   const [cards, setCards] = useState([]);
+  const [filteredCards, setFilteredCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCardForm, setShowCardForm] = useState(false);
   const [newCard, setNewCard] = useState({ 
@@ -18,6 +21,21 @@ const DeckDetail = () => {
   });
   const [error, setError] = useState('');
   const [creatingCard, setCreatingCard] = useState(false);
+  
+  // Новые состояния для уведомлений и модального окна
+  const [notification, setNotification] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    cardId: null,
+    cardQuestion: '',
+    deckTitle: ''
+  });
+  const [deletingCardId, setDeletingCardId] = useState(null);
+  const [animatingCardId, setAnimatingCardId] = useState(null);
+  
+  // Состояния для поиска
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   const fetchDeckAndCards = useCallback(async () => {
     try {
@@ -71,10 +89,12 @@ const DeckDetail = () => {
       }
       
       setCards(cardsData);
+      setFilteredCards(cardsData); // Изначально показываем все карточки
       setError('');
     } catch (error) {
       setError('Ошибка при загрузке данных: ' + (error.response?.data?.message || error.message));
       setCards([]);
+      setFilteredCards([]);
     } finally {
       setLoading(false);
     }
@@ -83,6 +103,60 @@ const DeckDetail = () => {
   useEffect(() => {
     fetchDeckAndCards();
   }, [fetchDeckAndCards]);
+
+  // Функция поиска карточек
+  const handleSearch = useCallback((term) => {
+    setSearchTerm(term);
+    setIsSearching(!!term.trim());
+    
+    if (!term.trim()) {
+      setFilteredCards(cards);
+      return;
+    }
+    
+    const searchTermLower = term.toLowerCase().trim();
+    const filtered = cards.filter(card => 
+      card.question?.toLowerCase().includes(searchTermLower) ||
+      card.answer?.toLowerCase().includes(searchTermLower)
+    );
+    
+    setFilteredCards(filtered);
+  }, [cards]);
+
+  // Обновляем отфильтрованные карточки при изменении исходных карточек
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      handleSearch(searchTerm);
+    } else {
+      setFilteredCards(cards);
+    }
+  }, [cards, searchTerm, handleSearch]);
+
+  const showNotification = (message, type = 'info') => {
+    setNotification({ message, type });
+  };
+
+  const closeNotification = () => {
+    setNotification(null);
+  };
+
+  const openConfirmModal = (cardId, cardQuestion) => {
+    setConfirmModal({
+      isOpen: true,
+      cardId,
+      cardQuestion,
+      deckTitle: deck?.title || 'колоды'
+    });
+  };
+
+  const closeConfirmModal = () => {
+    setConfirmModal({
+      isOpen: false,
+      cardId: null,
+      cardQuestion: '',
+      deckTitle: ''
+    });
+  };
 
   const handleCreateCard = async (e) => {
     e.preventDefault();
@@ -100,10 +174,20 @@ const DeckDetail = () => {
       });
       
       // Сразу добавляем новую карточку в состояние
+      const newCardData = response.data;
       setCards(prevCards => {
         const newCardsArray = Array.isArray(prevCards) ? [...prevCards] : [];
-        return [...newCardsArray, response.data];
+        return [...newCardsArray, newCardData];
       });
+      
+      // Если есть поисковый запрос, проверяем подходит ли новая карточка
+      if (searchTerm.trim()) {
+        const searchTermLower = searchTerm.toLowerCase().trim();
+        if (newCardData.question?.toLowerCase().includes(searchTermLower) ||
+            newCardData.answer?.toLowerCase().includes(searchTermLower)) {
+          setFilteredCards(prev => [...prev, newCardData]);
+        }
+      }
       
       // Сбрасываем форму
       setNewCard({ 
@@ -115,32 +199,68 @@ const DeckDetail = () => {
       setShowCardForm(false);
       setError('');
       
+      // Показываем уведомление об успешном создании
+      showNotification('Карточка успешно создана!', 'success');
+      
       // Обновляем данные для синхронизации
       setTimeout(() => {
         fetchDeckAndCards();
       }, 100);
       
     } catch (error) {
-      setError('Ошибка при создании карточки: ' + (error.response?.data?.message || error.message));
+      const errorMessage = 'Ошибка при создании карточки: ' + (error.response?.data?.message || error.message);
+      setError(errorMessage);
+      showNotification(errorMessage, 'error');
     } finally {
       setCreatingCard(false);
     }
   };
 
-  const handleDeleteCard = async (cardId) => {
-    if (!window.confirm('Удалить эту карточку?')) return;
+  const handleDeleteCard = async () => {
+    const { cardId } = confirmModal;
+    
+    if (!cardId) return;
+
+    setDeletingCardId(cardId);
+    setAnimatingCardId(cardId);
 
     try {
+      // Ждем немного для анимации
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       await axios.delete(`http://localhost:5000/api/cards/${cardId}`);
+      
+      // Удаляем карточку из состояния после анимации
       setCards(prevCards => prevCards.filter(card => card.id !== cardId));
+      setFilteredCards(prevCards => prevCards.filter(card => card.id !== cardId));
       setError('');
+      
+      // Показываем уведомление об успешном удалении
+      showNotification('Карточка успешно удалена', 'success');
+      
     } catch (error) {
-      setError('Ошибка при удалении карточки: ' + (error.response?.data?.message || error.message));
+      const errorMessage = 'Ошибка при удалении карточки: ' + (error.response?.data?.message || error.message);
+      setError(errorMessage);
+      showNotification(errorMessage, 'error');
+    } finally {
+      setDeletingCardId(null);
+      setAnimatingCardId(null);
+      closeConfirmModal();
     }
   };
 
+  const deleteCard = (cardId, cardQuestion) => {
+    openConfirmModal(cardId, cardQuestion);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+    setIsSearching(false);
+    setFilteredCards(cards);
+  };
+
   const renderCards = () => {
-    if (!Array.isArray(cards)) {
+    if (!Array.isArray(filteredCards)) {
       return (
         <div className="empty-state">
           <h3>Ошибка формата данных</h3>
@@ -149,7 +269,23 @@ const DeckDetail = () => {
       );
     }
 
-    if (cards.length === 0) {
+    if (filteredCards.length === 0) {
+      if (isSearching) {
+        return (
+          <div className="empty-state">
+            <h3>Карточки не найдены</h3>
+            <p>По запросу "{searchTerm}" ничего не найдено</p>
+            <button 
+              className="btn-secondary"
+              onClick={clearSearch}
+              style={{ marginTop: '1rem' }}
+            >
+              Показать все карточки
+            </button>
+          </div>
+        );
+      }
+      
       return (
         <div className="empty-state">
           <h3>В этой колоде пока нет карточек</h3>
@@ -158,28 +294,55 @@ const DeckDetail = () => {
       );
     }
 
-    return cards.map(card => (
-      <div key={card.id} className="card-item">
-        <div className="card-content">
-          <div className="card-side">
-            <strong>Вопрос:</strong>
-            <p>{card.question || 'Без вопроса'}</p>
+    return filteredCards.map(card => {
+      const isDeleting = deletingCardId === card.id;
+      const isAnimating = animatingCardId === card.id;
+      
+      return (
+        <div 
+          key={card.id} 
+          className={`card-item ${isDeleting ? 'deleting' : ''} ${isAnimating ? 'slide-out' : ''}`}
+        >
+          <div className="card-content">
+            <div className="card-side">
+              <strong>Вопрос:</strong>
+              <p>
+                {searchTerm ? highlightText(card.question || 'Без вопроса', searchTerm) : card.question || 'Без вопроса'}
+              </p>
+            </div>
+            <div className="card-side">
+              <strong>Ответ:</strong>
+              <p>
+                {searchTerm ? highlightText(card.answer || 'Без ответа', searchTerm) : card.answer || 'Без ответа'}
+              </p>
+            </div>
           </div>
-          <div className="card-side">
-            <strong>Ответ:</strong>
-            <p>{card.answer || 'Без ответа'}</p>
+          <div className="card-actions">
+            <button 
+              className="btn-danger"
+              onClick={() => deleteCard(card.id, card.question)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? '⌛ Удаление...' : '🗑️ Удалить'}
+            </button>
           </div>
         </div>
-        <div className="card-actions">
-          <button 
-            className="btn-danger"
-            onClick={() => handleDeleteCard(card.id)}
-          >
-            Удалить
-          </button>
-        </div>
-      </div>
-    ));
+      );
+    });
+  };
+
+  // Функция для подсветки найденного текста
+  const highlightText = (text, searchTerm) => {
+    if (!text || !searchTerm.trim()) return text;
+    
+    const regex = new RegExp(`(${searchTerm})`, 'gi');
+    const parts = text.split(regex);
+    
+    return parts.map((part, index) => 
+      regex.test(part) ? 
+        <mark key={index} className="search-highlight">{part}</mark> : 
+        part
+    );
   };
 
   if (loading) {
@@ -225,14 +388,69 @@ const DeckDetail = () => {
         <h1>{deck.title}</h1>
         {deck.description && <p className="deck-description">{deck.description}</p>}
         <p className="cards-count">
-          {cards.length} карточек
+          📊 {cards.length} карточек
+          {isSearching && (
+            <span className="search-results-count">
+              {' '}(найдено: {filteredCards.length})
+            </span>
+          )}
         </p>
+      </div>
+
+      {/* Панель поиска */}
+      <div className="search-panel">
+        <div className="search-container">
+          <div className="search-input-wrapper">
+            <input
+              type="text"
+              placeholder="Поиск карточек по вопросу или ответу..."
+              value={searchTerm}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="search-input"
+            />
+            {searchTerm && (
+              <button 
+                className="search-clear-btn"
+                onClick={clearSearch}
+                title="Очистить поиск"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {isSearching && (
+            <button 
+              className="btn-secondary"
+              onClick={clearSearch}
+            >
+              Сбросить
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
         <div className="error-message">
           {error}
         </div>
+      )}
+
+      {/* Модальное окно подтверждения удаления карточки */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirmModal}
+        onConfirm={handleDeleteCard}
+        title="Подтверждение удаления карточки"
+        message={`Вы уверены, что хотите удалить карточку с вопросом "${confirmModal.cardQuestion}" из колоды "${confirmModal.deckTitle}"? Это действие нельзя отменить.`}
+      />
+
+      {/* Всплывающие уведомления */}
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={closeNotification}
+        />
       )}
 
       {showCardForm && (

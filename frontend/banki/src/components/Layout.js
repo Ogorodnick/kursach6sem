@@ -22,6 +22,9 @@ const Layout = () => {
             <Link to="/" className="nav-link">
               🗂️ Мои колоды
             </Link>
+            <Link to="/discover" className="nav-link">
+              🔍 Найти колоду
+            </Link>
           </div>
 
           {/* Центральная часть - логотип/название */}
@@ -39,7 +42,7 @@ const Layout = () => {
                   {user.email || 'Пользователь'}
                 </span>
                 <button onClick={handleLogout} className="logout-btn">
-                  Выйти
+                  🚪 Выйти
                 </button>
               </>
             )}

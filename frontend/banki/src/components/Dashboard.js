@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import ConfirmModal from './ConfirmModal';
+import Notification from './Notification';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -11,10 +13,42 @@ const Dashboard = () => {
   const [newDeck, setNewDeck] = useState({ title: '', description: '' });
   const [error, setError] = useState('');
   const [deletingDeckId, setDeletingDeckId] = useState(null);
+  
+  // Новые состояния для уведомлений и модального окна
+  const [notification, setNotification] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    deckId: null,
+    deckTitle: ''
+  });
 
   useEffect(() => {
     fetchDecks();
   }, []);
+
+  const showNotification = (message, type = 'info') => {
+    setNotification({ message, type });
+  };
+
+  const closeNotification = () => {
+    setNotification(null);
+  };
+
+  const openConfirmModal = (deckId, deckTitle) => {
+    setConfirmModal({
+      isOpen: true,
+      deckId,
+      deckTitle
+    });
+  };
+
+  const closeConfirmModal = () => {
+    setConfirmModal({
+      isOpen: false,
+      deckId: null,
+      deckTitle: ''
+    });
+  };
 
   const fetchDecks = async () => {
     try {
@@ -98,6 +132,9 @@ const Dashboard = () => {
       setShowCreateForm(false);
       setError('');
       
+      // Показываем уведомление об успешном создании
+      showNotification('Колода успешно создана!', 'success');
+      
       // Обновляем список чтобы получить актуальные данные
       setTimeout(() => {
         fetchDecks();
@@ -105,13 +142,14 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Ошибка при создании колоды:', error);
       setError('Ошибка при создании колоды: ' + (error.response?.data?.message || error.message));
+      showNotification('Ошибка при создании колоды', 'error');
     }
   };
 
-  const deleteDeck = async (deckId, deckTitle) => {
-    if (!window.confirm(`Вы уверены, что хотите удалить колоду "${deckTitle}"? Все карточки в ней также будут удалены.`)) {
-      return;
-    }
+  const handleDeleteDeck = async () => {
+    const { deckId, deckTitle } = confirmModal;
+    
+    if (!deckId) return;
 
     setDeletingDeckId(deckId);
     
@@ -121,12 +159,23 @@ const Dashboard = () => {
       // Сразу удаляем колоду из списка
       setDecks(prevDecks => prevDecks.filter(deck => deck.id !== deckId));
       setError('');
+      
+      // Показываем уведомление об успешном удалении
+      showNotification(`Колода "${deckTitle}" успешно удалена`, 'success');
+      
     } catch (error) {
       console.error('Ошибка при удалении колоды:', error);
-      setError('Ошибка при удалении колоды: ' + (error.response?.data?.message || error.message));
+      const errorMessage = 'Ошибка при удалении колоды: ' + (error.response?.data?.message || error.message);
+      setError(errorMessage);
+      showNotification(errorMessage, 'error');
     } finally {
       setDeletingDeckId(null);
+      closeConfirmModal();
     }
+  };
+
+  const deleteDeck = (deckId, deckTitle) => {
+    openConfirmModal(deckId, deckTitle);
   };
 
   // Безопасный рендеринг колод
@@ -150,7 +199,6 @@ const Dashboard = () => {
       );
     }
 
-    // В функции renderDecks в Dashboard.js обновим часть с рендерингом карточки:
     return decks.map(deck => (
       <div key={deck.id} className="deck-card">
         <div className="deck-header">
@@ -208,6 +256,24 @@ const Dashboard = () => {
         <div className="error-message">
           {error}
         </div>
+      )}
+
+      {/* Модальное окно подтверждения удаления */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirmModal}
+        onConfirm={handleDeleteDeck}
+        title="Подтверждение удаления"
+        message={`Вы уверены, что хотите удалить колоду "${confirmModal.deckTitle}"? Все карточки в ней также будут удалены. Это действие нельзя отменить.`}
+      />
+
+      {/* Всплывающие уведомления */}
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={closeNotification}
+        />
       )}
 
       {showCreateForm && (

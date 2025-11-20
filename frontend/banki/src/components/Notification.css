@@ -1,0 +1,80 @@
+/* src/components/Notification.css */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  min-width: 300px;
+  max-width: 500px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  animation: slideIn 0.3s ease-out;
+}
+
+.notification-success {
+  border-left: 4px solid #27ae60;
+}
+
+.notification-error {
+  border-left: 4px solid #e74c3c;
+}
+
+.notification-warning {
+  border-left: 4px solid #f39c12;
+}
+
+.notification-info {
+  border-left: 4px solid #3498db;
+}
+
+.notification-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+}
+
+.notification-message {
+  flex: 1;
+  margin-right: 1rem;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #7f8c8d;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-close:hover {
+  color: #2c3e50;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .notification {
+    left: 20px;
+    right: 20px;
+    min-width: auto;
+  }
+}
