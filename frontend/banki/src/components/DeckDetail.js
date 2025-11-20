@@ -22,6 +22,12 @@ const DeckDetail = () => {
   const [error, setError] = useState('');
   const [creatingCard, setCreatingCard] = useState(false);
   
+  // Новые состояния для CSV импорта
+  const [showImportForm, setShowImportForm] = useState(false);
+  const [importingCards, setImportingCards] = useState(false);
+  const [csvFile, setCsvFile] = useState(null);
+  const [csvPreview, setCsvPreview] = useState([]);
+  
   // Новые состояния для уведомлений и модального окна
   const [notification, setNotification] = useState(null);
   const [confirmModal, setConfirmModal] = useState({
@@ -156,6 +162,77 @@ const DeckDetail = () => {
       cardQuestion: '',
       deckTitle: ''
     });
+  };
+
+  // Функция для обработки CSV файла
+  const handleCsvFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setCsvFile(file);
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const csvText = event.target.result;
+      const lines = csvText.split('\n').filter(line => line.trim());
+      
+      if (lines.length === 0) {
+        showNotification('Файл пустой', 'error');
+        return;
+      }
+
+      // Парсим CSV (простая реализация для CSV с запятыми)
+      const preview = lines.slice(0, 5).map((line, index) => {
+        const [question, answer] = line.split(',').map(field => field.trim().replace(/^"|"$/g, ''));
+        return { question, answer, lineNumber: index + 1 };
+      });
+
+      setCsvPreview(preview);
+    };
+    reader.readAsText(file);
+  };
+
+  // Функция для импорта карточек из CSV
+  const handleImportCards = async (e) => {
+    e.preventDefault();
+    if (!csvFile) return;
+
+    setImportingCards(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('csv', csvFile);
+
+      const response = await axios.post(
+        `http://localhost:5000/api/decks/${deckId}/cards/bulk`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+
+      const importedCards = response.data.cards || [];
+      showNotification(`Успешно импортировано ${importedCards.length} карточек!`, 'success');
+      
+      // Обновляем список карточек
+      setCards(prev => [...prev, ...importedCards]);
+      setShowImportForm(false);
+      setCsvFile(null);
+      setCsvPreview([]);
+      
+      // Перезагружаем данные для синхронизации
+      setTimeout(() => {
+        fetchDeckAndCards();
+      }, 500);
+      
+    } catch (error) {
+      const errorMessage = 'Ошибка при импорте карточек: ' + (error.response?.data?.message || error.message);
+      showNotification(errorMessage, 'error');
+    } finally {
+      setImportingCards(false);
+    }
   };
 
   const handleCreateCard = async (e) => {
@@ -378,6 +455,12 @@ const DeckDetail = () => {
           >
             + Добавить карточку
           </button>
+          <button 
+            className="btn-secondary"
+            onClick={() => setShowImportForm(true)}
+          >
+            📁 Импорт CSV
+          </button>
           <Link to={`/study/${deckId}`} className="btn-primary">
             🎯 Учить
           </Link>
@@ -453,6 +536,7 @@ const DeckDetail = () => {
         />
       )}
 
+      {/* Модальное окно добавления карточки */}
       {showCardForm && (
         <div className="modal-overlay">
           <div className="modal">
@@ -494,6 +578,68 @@ const DeckDetail = () => {
                   className="btn-secondary"
                   onClick={() => setShowCardForm(false)}
                   disabled={creatingCard}
+                >
+                  Отмена
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно импорта CSV */}
+      {showImportForm && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Импорт карточек из CSV в "{deck.title}"</h3>
+            <form onSubmit={handleImportCards}>
+              <div className="form-group">
+                <label>CSV файл:*</label>
+                <input
+                  type="file"
+                  accept=".csv,.txt"
+                  onChange={handleCsvFileChange}
+                  required
+                  disabled={importingCards}
+                />
+                <p className="form-help">
+                  Формат CSV: вопрос, ответ (каждая карточка на новой строке)
+                </p>
+              </div>
+
+              {csvPreview.length > 0 && (
+                <div className="csv-preview">
+                  <h4>Предпросмотр (первые 5 строк):</h4>
+                  <div className="preview-table">
+                    {csvPreview.map((row, index) => (
+                      <div key={index} className="preview-row">
+                        <span className="line-number">{row.lineNumber}.</span>
+                        <span className="question">"{row.question}"</span>
+                        <span className="separator">→</span>
+                        <span className="answer">"{row.answer}"</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="modal-actions">
+                <button 
+                  type="submit" 
+                  className="btn-primary"
+                  disabled={!csvFile || importingCards}
+                >
+                  {importingCards ? 'Импорт...' : 'Импортировать карточки'}
+                </button>
+                <button 
+                  type="button" 
+                  className="btn-secondary"
+                  onClick={() => {
+                    setShowImportForm(false);
+                    setCsvFile(null);
+                    setCsvPreview([]);
+                  }}
+                  disabled={importingCards}
                 >
                   Отмена
                 </button>

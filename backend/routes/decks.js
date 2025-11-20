@@ -29,5 +29,6 @@ router.put('/:id', auth, createDeckValidation, handleValidationErrors, deckContr
 router.patch('/:id', auth, updateDeckValidation, handleValidationErrors, deckController.updateDeck); // Добавляем PATCH
 router.delete('/:id', auth, deckController.deleteDeck);
 router.post('/:id/copy', auth, deckController.copyDeck);
+router.post('/:id/cards/bulk', auth, deckController.importCardsFromCSV);
 
 module.exports = router;

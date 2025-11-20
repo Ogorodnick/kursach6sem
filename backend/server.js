@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const fileUpload = require('express-fileupload');
 require('dotenv').config();
 
 const app = express();
@@ -31,6 +32,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.use(fileUpload({
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+}));
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/decks', require('./routes/decks'));
@@ -38,6 +43,8 @@ app.use('/api/cards', require('./routes/cards'));
 app.use('/api/reviews', require('./routes/reviews')); 
 app.use('/api/tags', require('./routes/tags'));       
 app.use('/api/test', require('./routes/test'));
+
+
 
 // 404 handler
 app.use('*', (req, res) => {
