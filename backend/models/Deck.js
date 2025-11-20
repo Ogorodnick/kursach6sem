@@ -76,8 +76,20 @@ class Deck {
   }
 
   // Обновление колоды
+// models/Deck.js - упрощенная версия
   static async update(id, updateData) {
     const { title, description, is_public } = updateData;
+    
+    // Получаем текущую колоду чтобы сохранить существующие значения
+    const currentDeck = await this.findById(id);
+    if (!currentDeck) {
+      throw new Error('Deck not found');
+    }
+    
+    // Используем переданные значения или существующие
+    const finalTitle = title !== undefined ? title : currentDeck.title;
+    const finalDescription = description !== undefined ? description : currentDeck.description;
+    const finalIsPublic = is_public !== undefined ? is_public : currentDeck.is_public;
     
     const query = `
       UPDATE decks 
@@ -86,7 +98,7 @@ class Deck {
       RETURNING *
     `;
     
-    const values = [title, description, is_public, id];
+    const values = [finalTitle, finalDescription, finalIsPublic, id];
     const { rows } = await pool.query(query, values);
     return rows[0];
   }

@@ -186,6 +186,8 @@ const Dashboard = () => {
   const toggleDeckVisibility = async (deckId, currentStatus, deckTitle) => {
     try {
       const newStatus = !currentStatus;
+      
+      // Используем PATCH запрос вместо PUT
       await axios.patch(`http://localhost:5000/api/decks/${deckId}`, {
         is_public: newStatus
       });
@@ -204,7 +206,19 @@ const Dashboard = () => {
       
     } catch (error) {
       console.error('Ошибка при изменении видимости колоды:', error);
-      const errorMessage = 'Ошибка при изменении видимости колоды: ' + (error.response?.data?.message || error.message);
+      
+      // Более детальная обработка ошибок
+      let errorMessage = 'Ошибка при изменении видимости колоды';
+      if (error.response) {
+        if (error.response.status === 404) {
+          errorMessage = 'Колода не найдена';
+        } else if (error.response.status === 403) {
+          errorMessage = 'Нет прав для изменения этой колоды';
+        } else {
+          errorMessage = error.response.data?.error || errorMessage;
+        }
+      }
+      
       showNotification(errorMessage, 'error');
     }
   };
