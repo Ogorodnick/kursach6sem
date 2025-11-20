@@ -1,11 +1,11 @@
-// src/components/StudySession.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './StudySession.css';
 
 const StudySession = () => {
   const { deckId } = useParams();
+  const navigate = useNavigate();
   const [cards, setCards] = useState([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -15,38 +15,24 @@ const StudySession = () => {
   const [startTime, setStartTime] = useState(null);
   const [savingProgress, setSavingProgress] = useState(false);
 
-  // Получаем карточки для повторения (только те, что готовы к изучению)
   const fetchDueCards = useCallback(async () => {
     try {
+      const token = localStorage.getItem('token');
       const response = await axios.get(`http://localhost:5000/api/reviews/due-cards`, {
-        params: { deckId }
+        params: { deckId },
+        headers: { Authorization: `Bearer ${token}` }
       });
       
-      let cardsData = response.data;
-      
-      // Обрабатываем разные форматы ответа
-      if (cardsData && cardsData.cards && Array.isArray(cardsData.cards)) {
-        cardsData = cardsData.cards;
-      }
-      else if (Array.isArray(cardsData)) {
-        // Оставляем как есть
-      }
-      else {
-        console.warn('Данные карточек не являются массивом');
-        cardsData = [];
-      }
-      
-      console.log('Карточки для повторения:', cardsData);
+      const cardsData = response.data.cards || [];
       
       if (cardsData.length === 0) {
-        setError('На сегодня нет карточек для повторения');
+        setError('🎉 На сегодня нет карточек для повторения!');
       }
       
-      // Перемешиваем карточки для изучения
-      const shuffledCards = cardsData.sort(() => Math.random() - 0.5);
+      const shuffledCards = [...cardsData].sort(() => Math.random() - 0.5);
       setCards(shuffledCards);
+      
     } catch (error) {
-      console.error('Ошибка при загрузке карточек:', error);
       setError('Ошибка при загрузке карточек: ' + (error.response?.data?.message || error.message));
       setCards([]);
     } finally {
@@ -60,18 +46,17 @@ const StudySession = () => {
 
   const handleShowAnswer = () => {
     setShowAnswer(true);
-    setStartTime(Date.now()); // Засекаем время просмотра ответа
+    setStartTime(Date.now());
   };
 
-  // Функция для преобразования текстовой оценки в числовую (для SM2 алгоритма)
   const getQualityFromDifficulty = (difficulty) => {
-    switch (difficulty) {
-      case 'again': return 0;  // Снова (полный провал)
-      case 'hard': return 1;   // Трудно
-      case 'good': return 3;   // Хорошо (стандартное значение в SM2)
-      case 'easy': return 4;   // Легко
-      default: return 3;
-    }
+    const qualityMap = {
+      'again': 0,
+      'hard': 1,
+      'good': 3,
+      'easy': 4
+    };
+    return qualityMap[difficulty] || 3;
   };
 
   const handleRateCard = async (difficulty) => {
@@ -81,39 +66,27 @@ const StudySession = () => {
     
     try {
       const currentCard = cards[currentCardIndex];
-      const reviewDuration = startTime ? Math.round((Date.now() - startTime) / 1000) : 0; // время в секундах
+      const reviewDuration = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
       const quality = getQualityFromDifficulty(difficulty);
 
-      // Отправляем результат повторения на сервер
-      const response = await axios.post('http://localhost:5000/api/reviews/save', {
-        cardId: currentCard.id,
+      const token = localStorage.getItem('token');
+      await axios.post('http://localhost:5000/api/reviews/save', {
+        cardId: currentCard.card_id || currentCard.id,
         quality: quality,
         reviewDuration: reviewDuration,
-        // progressId будет найден на сервере через UserCardProgress.findByUserAndCard
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
 
-      console.log('Прогресс сохранен:', response.data);
-
-      // Удаляем текущую карточку из списка (она обработана)
-      const remainingCards = cards.filter((_, index) => index !== currentCardIndex);
-      setCards(remainingCards);
-      
-      // Сбрасываем состояние
-      setShowAnswer(false);
-      setStartTime(null);
-      
-      // Если карточки закончились - завершаем сессию
-      if (remainingCards.length === 0) {
-        setSessionFinished(true);
+      if (currentCardIndex < cards.length - 1) {
+        setCurrentCardIndex(currentCardIndex + 1);
+        setShowAnswer(false);
+        setStartTime(null);
       } else {
-        // Переходим к следующей карточке (остаемся на том же индексе, т.к. массив уменьшился)
-        if (currentCardIndex >= remainingCards.length) {
-          setCurrentCardIndex(remainingCards.length - 1);
-        }
+        setSessionFinished(true);
       }
       
     } catch (error) {
-      console.error('Ошибка при сохранении прогресса:', error);
       setError('Ошибка при сохранении прогресса: ' + (error.response?.data?.message || error.message));
     } finally {
       setSavingProgress(false);
@@ -127,7 +100,7 @@ const StudySession = () => {
     setError('');
     setStartTime(null);
     setLoading(true);
-    fetchDueCards(); // Загружаем карточки заново
+    fetchDueCards();
   };
 
   if (loading) {
@@ -141,7 +114,7 @@ const StudySession = () => {
     );
   }
 
-  if (error) {
+  if (error && cards.length === 0) {
     return (
       <div className="study-session">
         <div className="study-header">
@@ -152,28 +125,6 @@ const StudySession = () => {
           <div className="session-actions">
             <button onClick={restartSession} className="btn-primary">
               Попробовать снова
-            </button>
-            <Link to={`/deck/${deckId}`} className="btn-secondary">
-              Вернуться к колоде
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (cards.length === 0 && !sessionFinished) {
-    return (
-      <div className="study-session">
-        <div className="study-header">
-          <Link to={`/deck/${deckId}`} className="back-link">← Назад к колоде</Link>
-        </div>
-        <div className="empty-state">
-          <h3>🎉 На сегодня все!</h3>
-          <p>Все карточки повторены. Возвращайтесь завтра для следующей сессии.</p>
-          <div className="session-actions">
-            <button onClick={restartSession} className="btn-primary">
-              Проверить снова
             </button>
             <Link to={`/deck/${deckId}`} className="btn-secondary">
               Вернуться к колоде
@@ -219,16 +170,12 @@ const StudySession = () => {
       </div>
 
       <div className="progress-bar">
-        <div 
-          className="progress-fill" 
-          style={{ width: `${progress}%` }}
-        ></div>
+        <div className="progress-fill" style={{ width: `${progress}%` }}></div>
       </div>
 
       <div className="card-container">
         <div className={`study-card ${showAnswer ? 'show-answer' : ''}`}>
           {!showAnswer ? (
-            // Передняя сторона карточки (вопрос)
             <div className="card-front">
               <div className="card-content">
                 <div className="question-section">
@@ -240,13 +187,12 @@ const StudySession = () => {
                     className="btn-primary show-answer-btn"
                     disabled={savingProgress}
                   >
-                    Показать ответ
+                    {savingProgress ? 'Загрузка...' : 'Показать ответ'}
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            // Задняя сторона карточки (ответ + кнопки оценки)
             <div className="card-back">
               <div className="card-content">
                 <div className="question-section">
@@ -260,32 +206,16 @@ const StudySession = () => {
                   <div className="difficulty-buttons">
                     <p>Насколько хорошо вы помните?</p>
                     <div className="buttons-grid">
-                      <button 
-                        onClick={() => handleRateCard('again')}
-                        className="btn-difficulty again"
-                        disabled={savingProgress}
-                      >
+                      <button onClick={() => handleRateCard('again')} className="btn-difficulty again" disabled={savingProgress}>
                         {savingProgress ? '⌛' : '❌'} Снова
                       </button>
-                      <button 
-                        onClick={() => handleRateCard('hard')}
-                        className="btn-difficulty hard"
-                        disabled={savingProgress}
-                      >
+                      <button onClick={() => handleRateCard('hard')} className="btn-difficulty hard" disabled={savingProgress}>
                         {savingProgress ? '⌛' : '🟡'} Трудно
                       </button>
-                      <button 
-                        onClick={() => handleRateCard('good')}
-                        className="btn-difficulty good"
-                        disabled={savingProgress}
-                      >
+                      <button onClick={() => handleRateCard('good')} className="btn-difficulty good" disabled={savingProgress}>
                         {savingProgress ? '⌛' : '🟢'} Хорошо
                       </button>
-                      <button 
-                        onClick={() => handleRateCard('easy')}
-                        className="btn-difficulty easy"
-                        disabled={savingProgress}
-                      >
+                      <button onClick={() => handleRateCard('easy')} className="btn-difficulty easy" disabled={savingProgress}>
                         {savingProgress ? '⌛' : '🔵'} Легко
                       </button>
                     </div>
